@@ -1,0 +1,133 @@
+
+// +------------------------------------------------------------------+
+// |                                                  Advanced RSI Grid Hedge |
+// |                        Copyright 2021, Forex Robot Easy Team |
+// |                                                         forexroboteasy.com |
+// +------------------------------------------------------------------+
+// | This expert advisor implements a trading algorithm based on RSI indicators, grid hedging system, and trend filter. |
+// | It does not employ martingale techniques. |
+// | The recommended sets with specific parameters and currency pairs are SetH1_v1 and SetH1_v2. |
+// +------------------------------------------------------------------+
+
+// Define input variables
+input int RSI_Period1 = 14; // RSI period for the first RSI indicator
+input int RSI_Period2 = 21; // RSI period for the second RSI indicator
+input double Grid_Size = 50.0; // Grid size in pips
+input double Lot_Size = 0.01; // Initial lot size
+input double Max_Lots = 10.0; // Maximum allowed lot size
+input double Stop_Loss = 100.0; // Stop loss in pips
+input double Take_Profit = 100.0; // Take profit in pips
+input double Trend_Filter_Period = 50.0; // Period for the trend filter
+
+// Define currency pairs for SetH1_v1
+string[] SetH1_v1_CurrencyPairs = {'AUDUSD', 'EURCAD', 'GBPCAD', 'EURJPY', 'EURNZD', 'CHFJPY', 'NZDUSD'};
+
+// Define currency pairs for SetH1_v2
+string[] SetH1_v2_CurrencyPairs = {'AUDCHF'};
+
+// Define trading function
+void OnTick()
+{
+  // Check if it's a recommended set
+  bool isRecommendedSet = IsRecommendedSet();
+
+  // Check if it's a buy signal
+  bool isBuySignal = IsBuySignal();
+
+  // Check if it's a sell signal
+  bool isSellSignal = IsSellSignal();
+
+  // Check if it's a trend filter signal
+  bool isTrendFilterSignal = IsTrendFilterSignal();
+
+  // Place buy trade if all conditions are met
+  if (isRecommendedSet && isBuySignal && isTrendFilterSignal)
+  {
+    var ticket = OrderSend(Symbol(), OP_BUY, Lot_Size, Ask, 0, Ask - Stop_Loss * Point, Ask + Take_Profit * Point, 'Buy Order', 0, 0, Green);
+    if (ticket > 0)
+    {
+      Print('Buy order placed successfully');
+    }
+    else
+    {
+      Print('Error placing buy order: ', GetLastError());
+    }
+  }
+
+  // Place sell trade if all conditions are met
+  if (isRecommendedSet && isSellSignal && isTrendFilterSignal)
+  {
+    var ticket = OrderSend(Symbol(), OP_SELL, Lot_Size, Bid, 0, Bid + Stop_Loss * Point, Bid - Take_Profit * Point, 'Sell Order', 0, 0, Red);
+    if (ticket > 0)
+    {
+      Print('Sell order placed successfully');
+    }
+    else
+    {
+      Print('Error placing sell order: ', GetLastError());
+    }
+  }
+}
+
+// Check if it's a recommended set
+bool IsRecommendedSet()
+{
+  string symbol = Symbol();
+  if (ArrayIsContaining(SetH1_v1_CurrencyPairs, symbol))
+  {
+    return true;
+  }
+  else if (ArrayIsContaining(SetH1_v2_CurrencyPairs, symbol))
+  {
+    return true;
+  }
+  return false;
+}
+
+// Check if an array contains a specific value
+bool ArrayIsContaining(string[] array, string value)
+{
+  for (int i = 0; i < ArraySize(array); i++)
+  {
+    if (array[i] == value)
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Check if it's a buy signal
+bool IsBuySignal()
+{
+  double rsi1 = iRSI(Symbol(), PERIOD_H1, RSI_Period1, PRICE_CLOSE, 0);
+  double rsi2 = iRSI(Symbol(), PERIOD_H1, RSI_Period2, PRICE_CLOSE, 0);
+  if (rsi1 < 30 && rsi2 < 30)
+  {
+    return true;
+  }
+  return false;
+}
+
+// Check if it's a sell signal
+bool IsSellSignal()
+{
+  double rsi1 = iRSI(Symbol(), PERIOD_H1, RSI_Period1, PRICE_CLOSE, 0);
+  double rsi2 = iRSI(Symbol(), PERIOD_H1, RSI_Period2, PRICE_CLOSE, 0);
+  if (rsi1 > 70 && rsi2 > 70)
+  {
+    return true;
+  }
+  return false;
+}
+
+// Check if it's a trend filter signal
+bool IsTrendFilterSignal()
+{
+  double ma = iMA(Symbol(), PERIOD_H1, Trend_Filter_Period, 0, MODE_SMA, PRICE_CLOSE, 0);
+  if (Close[0] > ma)
+  {
+    return true;
+  }
+  return false;
+}
